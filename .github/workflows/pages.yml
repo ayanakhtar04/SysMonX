@@ -35,7 +35,7 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
-          GITHUB_ACTIONS: true
+          VITE_APP_BASE: /SysMonX/
 
       - name: SPA fallback
         run: cp dist/index.html dist/404.html

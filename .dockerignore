@@ -1,0 +1,8 @@
+node_modules
+dist
+npm-debug.log*
+.env
+.git
+.gitignore
+sysmonx-backend/node_modules
+sysmonx-backend/dist

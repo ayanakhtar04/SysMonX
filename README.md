@@ -68,6 +68,34 @@ To preview the built app locally:
 npm run preview
 ```
 
+## Run with Docker
+
+You can run both frontend and backend using Docker Compose.
+
+### 1. Build and start containers
+
+```powershell
+cd F:\SysMonX
+docker compose up --build -d
+```
+
+### 2. Open services
+
+- Frontend: `http://localhost:8080`
+- Backend health: `http://localhost:5001/health`
+
+### 3. Stop containers
+
+```powershell
+docker compose down
+```
+
+### Notes
+
+- Frontend container is built with `VITE_API_BASE_URL=http://localhost:5001`.
+- If your backend runs elsewhere, change `VITE_API_BASE_URL` in `docker-compose.yml` and rebuild.
+- VM monitoring still depends on Node Exporter being reachable from the backend container/machine.
+
 ## Application Flow
 
 1. **Login** – Static login form (`src/pages/LoginPage.tsx`). On submit, the email is stored in `AuthContext` and the user is redirected to the dashboard.
