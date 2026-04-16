@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === 'production' ? '/SysMonX/' : '/',
   plugins: [react()],
   server: {
     port: 5173,
@@ -9,4 +10,4 @@ export default defineConfig({
   preview: {
     port: 4173,
   },
-});
+}));
