@@ -94,20 +94,61 @@ const parseDiskMetrics = (samples: MetricSample[]): ParsedDiskMetrics | null => 
   const sizeSamples = samples.filter((s) => s.metric === 'node_filesystem_size_bytes');
   const availSamples = samples.filter((s) => s.metric === 'node_filesystem_avail_bytes');
 
-  const isRootFilesystem = (s: MetricSample): boolean => {
-    const { mountpoint, fstype } = s.labels;
-    if (fstype && (fstype === 'tmpfs' || fstype === 'overlay')) return false;
-    return mountpoint === '/' || mountpoint === undefined;
+  const ignoredFstypes = new Set([
+    'tmpfs',
+    'overlay',
+    'squashfs',
+    'proc',
+    'sysfs',
+    'devtmpfs',
+    'devpts',
+    'cgroup2',
+    'nsfs',
+    'fuse.gvfsd-fuse',
+    'fuse.portal',
+    'fuse.vmware-vmblock',
+  ]);
+
+  const isUsableFilesystemSample = (s: MetricSample): boolean => {
+    const { mountpoint, fstype, device_error: deviceError } = s.labels;
+    if (!mountpoint) return false;
+    if (deviceError && deviceError !== '') return false;
+    if (fstype && ignoredFstypes.has(fstype)) return false;
+    if (!Number.isFinite(s.value) || s.value <= 0) return false;
+    return true;
   };
 
-  const sizeSample = sizeSamples.find(isRootFilesystem) ?? sizeSamples[0];
-  const availSample = availSamples.find(isRootFilesystem) ?? availSamples[0];
+  const usableSizeSamples = sizeSamples.filter(isUsableFilesystemSample);
+  const usableAvailSamples = availSamples.filter(isUsableFilesystemSample);
+
+  const sizeByMountpoint = new Map<string, MetricSample>();
+  for (const sample of usableSizeSamples) {
+    sizeByMountpoint.set(sample.labels.mountpoint as string, sample);
+  }
+
+  const availByMountpoint = new Map<string, MetricSample>();
+  for (const sample of usableAvailSamples) {
+    availByMountpoint.set(sample.labels.mountpoint as string, sample);
+  }
+
+  const commonMountpoints = [...sizeByMountpoint.keys()].filter((mountpoint) => availByMountpoint.has(mountpoint));
+
+  if (commonMountpoints.length === 0) {
+    return null;
+  }
+
+  const selectedMountpoint = commonMountpoints.includes('/') ? '/' : commonMountpoints[0];
+  const sizeSample = sizeByMountpoint.get(selectedMountpoint);
+  const availSample = availByMountpoint.get(selectedMountpoint);
 
   if (!sizeSample || !availSample) {
     return null;
   }
 
-  return { totalBytes: sizeSample.value, availableBytes: availSample.value };
+  const totalBytes = sizeSample.value;
+  const availableBytes = Math.min(availSample.value, totalBytes);
+
+  return { totalBytes, availableBytes };
 };
 
 const parseNetworkMetrics = (samples: MetricSample[]): ParsedNetworkMetrics | null => {
